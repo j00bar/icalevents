@@ -36,6 +36,7 @@ class Event:
         self.start = None
         self.end = None
         self.all_day = True
+        self.location = None
 
     def time_left(self, time=now()):
         """
@@ -158,6 +159,7 @@ def create_event(component):
     event.end = event_end
     event.summary = str(component.get('summary'))
     event.description  = str(component.get('description'))
+    event.location = str(component.get('location'))
     event.all_day = type(component.get('dtstart').dt) is datetime.date
 
     return event
