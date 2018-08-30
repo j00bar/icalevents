@@ -33,6 +33,7 @@ class Event:
         """
         self.uid = -1
         self.summary = None
+        self.description = None
         self.start = None
         self.end = None
         self.all_day = True
@@ -104,9 +105,11 @@ class Event:
 
         ne = Event()
         ne.summary = self.summary
+        ne.description = self.description
         ne.start = new_start
         ne.end = (new_start + duration)
         ne.all_day = (self.all_day and (new_start - self.start).seconds == 0)
+        ne.location = self.location
         ne.uid = uid
 
         return ne
