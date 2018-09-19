@@ -7,7 +7,10 @@ from datetime import datetime, timedelta, date
 
 from icalendar import Calendar
 from pytz import utc
+from dateutil import rrule, parser
 
+import logging
+logger = logging.getLogger(__name__)
 
 # default query length (one week)
 default_span = timedelta(days=7)
@@ -270,8 +273,8 @@ def create_recurring_events(start, end, component):
     :param end: end of the time frame
     :param component: iCal component
     :return: occurrances of the event
-    """
-    start = normalize(start)
+    """    
+    start = normalize(component['DTSTART'].dt)
     end = normalize(end)
 
     rule = component.get('rrule')
@@ -279,7 +282,7 @@ def create_recurring_events(start, end, component):
     unfolded = []
 
     first = create_event(component)
-    unfolded.append(first)
+    # unfolded.append(first)
 
     freq = str(rule.get('FREQ')[0])
     last = find_last(rule, freq, end, first)
@@ -290,6 +293,34 @@ def create_recurring_events(start, end, component):
         limit = end
     else:
         limit = last
+    # import pdb; pdb.set_trace()
+    logger.debug('summary: %s; freq: %s; start: %s; limit: %s; rule: %s', component['summary'], freq, start, limit, rule)
+    kwargs = {}
+    if rule.get('BYDAY'):
+        byday = [
+            getattr(rrule, s) if len(s) == 2 else rrule.weekday(getattr(rrule, s[-2:]).weekday, int(s[:-2]))
+            for s in rule['BYDAY']
+        ]
+        kwargs['byweekday'] = byday
+    if rule.get('INTERVAL'):
+        kwargs['interval'] = rule['INTERVAL'][0]
+    logger.debug('kwargs: %s', kwargs)
+    rrule_obj = rrule.rrule(
+        getattr(rrule, freq),
+        dtstart=start,
+        until=limit,
+        **kwargs
+    )
+    rrule_set = rrule.rruleset()
+    rrule_set.rrule(rrule_obj)
+    if 'EXDATE' in component:
+        for exdate in component['EXDATE'].dts:
+            rrule_set.exdate(exdate.dt)
+    for dt in list(rrule_set):
+        logger.debug('dt: %s', dt)
+        unfolded.append(first.copy_to(dt))
+    return in_range(unfolded, start, end)
+
 
     current = first
 
